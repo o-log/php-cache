@@ -16,4 +16,8 @@ class Cache{
     static public function get($bucket_id, $key){
         return false;
     }
+
+    static public function delete($bucket_id, $key){
+
+    }
 }
