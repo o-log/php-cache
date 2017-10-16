@@ -2,7 +2,7 @@
 
 namespace OLOG\Cache;
 
-class CacheRedis implements CacheEngineInterface
+class BucketRedis implements BucketInterface
 {
     static public function set($key, $value, $ttl_secs)
     {
@@ -45,7 +45,8 @@ class CacheRedis implements CacheEngineInterface
         throw new \Exception('redis increment not implemented');
         // инкремент сейчас не поддерживается
         // что надо сделать:
-        // 1. если такого ключа еще нет - редис создает новый со значением 1, при этом у нас все значения должны быть сериализованные, а это будет не сериализованное. нужно запретить создавать ключ если если его при инкременте?
+        // 1. если такого ключа еще нет - редис создает новый со значением 1, при этом у нас все значения должны быть
+        // сериализованные, а это будет не сериализованное. нужно запретить создавать ключ если если его при инкременте?
         // 2. перед инкрементом десериализовать, а потом сериализовать обратно
 
         /*

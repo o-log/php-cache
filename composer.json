@@ -5,7 +5,8 @@
     "phpunit/phpunit": "5.5.*"
   },
   "require": {
-    "psr/simple-cache": "0.3.*"
+    "psr/simple-cache": "0.3.*",
+    "predis/predis": "1.*"
   },
   "autoload": {
     "psr-0": {

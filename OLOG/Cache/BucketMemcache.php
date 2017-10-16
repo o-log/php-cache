@@ -2,9 +2,17 @@
 
 namespace OLOG\Cache;
 
-class CacheMemcache implements CacheEngineInterface
+class BucketMemcache implements BucketInterface
 {
-    static public function set($key, $value, $exp)
+    public $cache_key_prefix;
+    public $servers = [];
+
+    public function __construct($servers, $cache_key_prefix = ""){
+        $this->servers = $servers;
+        $this->cache_key_prefix = $cache_key_prefix;
+    }
+
+    public function set($key, $value, $exp)
     {
         if ($exp == -1) {
             $exp = 60;
@@ -22,12 +30,12 @@ class CacheMemcache implements CacheEngineInterface
             return true;
         }
 
-        $mc = self::getMcConnectionObj(); // do not check result - already checked
+        $mc = $this->connection(); // do not check result - already checked
         if (!$mc){
             return false;
         }
 
-        $full_key = self::dmemcache_key($key);
+        $full_key = $this->dmemcache_key($key);
 
         $mcs_result = $mc->set($full_key, $value, MEMCACHE_COMPRESSED, $exp);
 
@@ -38,14 +46,14 @@ class CacheMemcache implements CacheEngineInterface
         return TRUE;
     }
 
-    static public function increment($key)
+    public function increment($key)
     {
-        $mc = self::getMcConnectionObj();
+        $mc = $this->connection();
         if (!$mc){
             return false;
         }
         
-        $full_key = self::dmemcache_key($key);
+        $full_key = $this->dmemcache_key($key);
         if (!$mc->increment($full_key)) {
             return FALSE;
         } else {
@@ -53,31 +61,37 @@ class CacheMemcache implements CacheEngineInterface
         }
     }
 
-    static public function get($key)
+    public function get($key)
     {
-        $mc = self::getMcConnectionObj();
+        $mc = $this->connection();
         if (!$mc){
             return false;
         }
 
-        $full_key = self::dmemcache_key($key);
+        $full_key = $this->dmemcache_key($key);
         $result = $mc->get($full_key);
 
         return $result;
     }
 
-    static public function delete($key)
+    public function delete($key)
     {
-        $mc = self::getMcConnectionObj();
+        $mc = $this->connection();
         if (!$mc){
             return false;
         }
 
-        $full_key = self::dmemcache_key($key);
+        $full_key = $this->dmemcache_key($key);
         return $mc->delete($full_key);
     }
 
-    static public function getMcConnectionObj()
+    /**
+     * May return null if not configured - all clients must support this and do something default (get() must return
+     * false, etc.)
+     * @return \Memcache|null
+     * @throws \Exception
+     */
+    public function connection()
     {
         static $memcache = NULL;
 
@@ -85,29 +99,30 @@ class CacheMemcache implements CacheEngineInterface
             return $memcache;
         }
 
-        //$memcache_servers = \OLOG\ConfWrapper::value(\OLOG\Model\ModelConstants::MODULE_CONFIG_ROOT_KEY . '.memcache_servers');
-        $memcache_servers = CacheConfig::getServersObjArr();
-
-        if (!$memcache_servers){
+        // no servers is not an error - just no servers, thus no caching in this bucket
+        if (!count($this->servers)){
             return null;
         }
 
         // Memcached php extension not supported - slower, rare, extra features not needed
-        /** @var \Memcache $memcache */
         $memcache = new \Memcache;
 
-        /** @var MemcacheServerSettings $server_settings_obj */
-        foreach ($memcache_servers as $server_settings_obj) {
-            \OLOG\Assert::assert($memcache->addServer($server_settings_obj->getHost(), $server_settings_obj->getPort()));
+        /** @var MemcacheServer $server */
+        foreach ($this->servers as $server) {
+            if (!$memcache->addServer($server->host, $server->port)){
+                throw new \Exception('Connect failed');
+            }
             $memcache->setCompressThreshold(5000, 0.2);
         }
 
         return $memcache;
     }
 
-    static public function dmemcache_key($key)
+    public function dmemcache_key($key)
     {
-        $prefix = CacheConfig::getCacheKeyPrefix();
+        $prefix = $this->cache_key_prefix;
+
+        // empty prefix may conflict with something?
         if ($prefix == ''){
             $prefix = 'default';
         }

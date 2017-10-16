@@ -22,7 +22,7 @@ class CacheWrapper
             return self::$storage_arr[$key];
         }
 
-        /** @var CacheEngineInterface $engine_classname */
+        /** @var BucketInterface $engine_classname */
         $engine_classname = CacheConfig::getEngineClassname();
         $value = $engine_classname::get($key);
 
@@ -42,7 +42,7 @@ class CacheWrapper
     {
         unset(self::$storage_arr[$key]);
 
-        /** @var CacheEngineInterface $engine_classname */
+        /** @var BucketInterface $engine_classname */
         $engine_classname = CacheConfig::getEngineClassname();
         return $engine_classname::delete($key);
     }
@@ -58,7 +58,7 @@ class CacheWrapper
     {
         self::$storage_arr[$key] = $value;
 
-        /** @var CacheEngineInterface $engine_classname */
+        /** @var BucketInterface $engine_classname */
         $engine_classname = CacheConfig::getEngineClassname();
         return $engine_classname::set($key, $value, $expire);
     }
@@ -69,7 +69,7 @@ class CacheWrapper
         // поэтому удаляем неактуальное значение с тем, чтобы оно если что перечиталось из мемкеша
         unset(self::$storage_arr[$key]);
 
-        /** @var CacheEngineInterface $engine_classname */
+        /** @var BucketInterface $engine_classname */
         $engine_classname = CacheConfig::getEngineClassname();
         return $engine_classname::increment($key);
     }
