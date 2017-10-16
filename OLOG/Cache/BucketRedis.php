@@ -2,6 +2,11 @@
 
 namespace OLOG\Cache;
 
+/**
+ * Class BucketRedis
+ * TODO: rewrite
+ * @package OLOG\Cache
+ */
 class BucketRedis implements BucketInterface
 {
     static public function set($key, $value, $ttl_secs)
