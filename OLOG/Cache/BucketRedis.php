@@ -91,7 +91,8 @@ class BucketRedis implements BucketInterface
         $full_key = $this->cacheKey($key);
         $result = $redis_connection_obj->get($full_key);
 
-        if ($result === false) {
+        // TODO: null values are not processed correctly - fix
+        if ($result === null) {
             return false;
         }
 
