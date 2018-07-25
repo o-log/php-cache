@@ -21,9 +21,13 @@ echo '<div><a href="/">reload</a></div>';
 //
 
 $test_cache_key = 'test_key';
+$test_cache_value = new stdClass();
+$test_cache_value->title = 'Test title';
+$test_cache_value->subObj = new stdClass();
+$test_cache_value->subObj->description = 'Test description';
 
 if (\OLOG\GET::optional('a') == OPERATION_CACHE_SET) {
-    \OLOG\Cache\Cache::set(TEST_BUCKET, $test_cache_key, 100, 20);
+    \OLOG\Cache\Cache::set(TEST_BUCKET, $test_cache_key, $test_cache_value, 20);
 }
 
 /*

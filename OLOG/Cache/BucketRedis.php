@@ -39,12 +39,12 @@ class BucketRedis implements BucketInterface
         }
 
         $full_key = $this->cacheKey($key);
-        //$value_ser = serialize($value);
+        $value_ser = serialize($value);
 
         if ($ttl_secs > 0) {
-            $mcs_result = $redis_connection_obj->setex($full_key, $ttl_secs, $value);
+            $mcs_result = $redis_connection_obj->setex($full_key, $ttl_secs, $value_ser);
         } else {
-            $mcs_result = $redis_connection_obj->set($full_key, $value);
+            $mcs_result = $redis_connection_obj->set($full_key, $value_ser);
         }
 
         if (!$mcs_result) {
@@ -96,7 +96,7 @@ class BucketRedis implements BucketInterface
             return false;
         }
 
-        //$result = unserialize($result);
+        $result = unserialize($result);
 
         return $result;
     }
