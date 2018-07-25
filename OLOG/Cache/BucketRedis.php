@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace OLOG\Cache;
 
@@ -9,8 +10,22 @@ namespace OLOG\Cache;
  */
 class BucketRedis implements BucketInterface
 {
-    static public function set($key, $value, $ttl_secs)
+    protected $cache_key_prefix;
+    protected $servers = [];
+    protected $redis = NULL;
+
+    public function __construct($servers, $cache_key_prefix = "default"){
+        $this->servers = $servers;
+        $this->cache_key_prefix = $cache_key_prefix;
+    }
+
+    public function set($key, $value, $ttl_secs)
     {
+        $redis_connection_obj = $this->connection(); // do not check result - already checked
+        if (!$redis_connection_obj) {
+            return false;
+        }
+
         if ($ttl_secs == -1) {
             $ttl_secs = 60;
         }
@@ -23,18 +38,13 @@ class BucketRedis implements BucketInterface
             return true;
         }
 
-        $redis_connection_obj = self::getRedisConnectionObj(); // do not check result - already checked
-        if (!$redis_connection_obj) {
-            return false;
-        }
-
-        $full_key = self::cache_key($key);
-        $value_ser = serialize($value);
+        $full_key = $this->cacheKey($key);
+        //$value_ser = serialize($value);
 
         if ($ttl_secs > 0) {
-            $mcs_result = $redis_connection_obj->setex($full_key, $ttl_secs, $value_ser);
+            $mcs_result = $redis_connection_obj->setex($full_key, $ttl_secs, $value);
         } else {
-            $mcs_result = $redis_connection_obj->set($full_key, $value_ser);
+            $mcs_result = $redis_connection_obj->set($full_key, $value);
         }
 
         if (!$mcs_result) {
@@ -44,7 +54,7 @@ class BucketRedis implements BucketInterface
         return true;
     }
 
-    static public function increment($key)
+    public function increment($key)
     {
         // TODO: implement
         throw new \Exception('redis increment not implemented');
@@ -71,78 +81,71 @@ class BucketRedis implements BucketInterface
      * @param $key
      * @return array|bool|string
      */
-    static public function get($key)
+    public function get($key)
     {
-        $redis_connection_obj = self::getRedisConnectionObj();
+        $redis_connection_obj = $this->connection();
         if (!$redis_connection_obj) {
             return false;
         }
 
-        $full_key = self::cache_key($key);
+        $full_key = $this->cacheKey($key);
         $result = $redis_connection_obj->get($full_key);
 
         if ($result === false) {
             return false;
         }
 
-        $result = unserialize($result);
+        //$result = unserialize($result);
 
         return $result;
     }
 
-    static public function delete($key)
+    public function delete($key)
     {
-        $redis_connection_obj = self::getRedisConnectionObj();
+        $redis_connection_obj = $this->connection();
         if (!$redis_connection_obj) {
             return false;
         }
 
-        $full_key = self::cache_key($key);
-        return $redis_connection_obj->del($full_key);
+        $full_key = $this->cacheKey($key);
+        return $redis_connection_obj->del([$full_key]);
     }
 
     /**
      * @return null|\Predis\Client
      * @throws \Exception
      */
-    static public function getRedisConnectionObj()
+    public function connection()
     {
-        static $redis = NULL;
-
-        if (isset($redis)) {
-            return $redis;
+        if ($this->redis) {
+            return $this->redis;
         }
 
-        $memcache_servers = CacheConfig::getServersObjArr();
-        if (!$memcache_servers) {
+        $servers = $this->servers;
+        if (!count($servers)) {
             return null;
         }
 
         $servers_arr = [];
-        foreach ($memcache_servers as $server_settings_obj) {
+        foreach ($servers as $server_settings_obj) {
+            // TODO: check server class
             $servers_arr[] = [
                 'scheme'   => 'tcp',
-                'host'     => $server_settings_obj->getHost(),
-                'port'     => $server_settings_obj->getPort()
+                'host'     => $server_settings_obj->host,
+                'port'     => $server_settings_obj->port
             ];
         }
 
-        $cache_engine_params_arr = CacheConfig::getCacheEngineParamsArr();
-        $redis = new \Predis\Client($servers_arr, $cache_engine_params_arr);
+        //$cache_engine_params_arr = CacheConfig::getCacheEngineParamsArr();
+        $redis = new \Predis\Client($servers_arr, ['prefix' => $this->cache_key_prefix]);
 
         return $redis;
     }
 
-    static public function cache_key($key)
+    public function cacheKey($key)
     {
-        $prefix = CacheConfig::getCacheKeyPrefix();
-        if ($prefix == '') {
-            $prefix = 'default';
-        }
-
-        $full_key = $prefix . '-' . $key;
-
-        return md5($full_key);
+        //return md5($key);
+        return $key;
     }
 
 }

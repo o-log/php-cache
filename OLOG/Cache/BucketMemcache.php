@@ -1,11 +1,13 @@
 <?php
+declare(strict_types=1);
 
 namespace OLOG\Cache;
 
 class BucketMemcache implements BucketInterface
 {
-    public $cache_key_prefix;
-    public $servers = [];
+    protected $cache_key_prefix;
+    protected $servers = [];
+    protected $memcache = NULL;
 
     public function __construct($servers, $cache_key_prefix = ""){
         $this->servers = $servers;
@@ -93,10 +95,8 @@ class BucketMemcache implements BucketInterface
      */
     public function connection()
     {
-        static $memcache = NULL;
-
-        if (isset($memcache)) {
-            return $memcache;
+        if (isset($this->memcache)) {
+            return $this->memcache;
         }
 
         // no servers is not an error - just no servers, thus no caching in this bucket
@@ -105,17 +105,17 @@ class BucketMemcache implements BucketInterface
         }
 
         // Memcached php extension not supported - slower, rare, extra features not needed
-        $memcache = new \Memcache;
+        $this->memcache = new \Memcache;
 
         /** @var MemcacheServer $server */
         foreach ($this->servers as $server) {
-            if (!$memcache->addServer($server->host, $server->port)){
+            if (!$this->memcache->addServer($server->host, $server->port)){
                 throw new \Exception('Connect failed');
             }
-            $memcache->setCompressThreshold(5000, 0.2);
+            $this->memcache->setCompressThreshold(5000, 0.2);
         }
 
-        return $memcache;
+        return $this->memcache;
     }
 
     public function dmemcache_key($key)
@@ -129,7 +129,7 @@ class BucketMemcache implements BucketInterface
 
         $full_key = $prefix . '-' . $key;
 
+        // TODO: md5 conflicts probability!
         return md5($full_key);
     }
-
-} 
+}
