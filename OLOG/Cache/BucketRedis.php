@@ -26,12 +26,8 @@ class BucketRedis implements BucketInterface
             return false;
         }
 
-        if ($ttl_secs == -1) {
-            $ttl_secs = 60;
-        }
-
         if ($ttl_secs < 0) {
-            $ttl_secs = 0;
+            throw new \Exception('Negative cache lifetime');
         }
 
         if ($ttl_secs == 0) {
@@ -41,14 +37,10 @@ class BucketRedis implements BucketInterface
         $full_key = $this->cacheKey($key);
         $value_ser = serialize($value);
 
-        if ($ttl_secs > 0) {
-            $mcs_result = $redis_connection_obj->setex($full_key, $ttl_secs, $value_ser);
-        } else {
-            $mcs_result = $redis_connection_obj->set($full_key, $value_ser);
-        }
+        $mcs_result = $redis_connection_obj->setex($full_key, $ttl_secs, $value_ser);
 
         if (!$mcs_result) {
-            return false;
+            throw new \Exception('Redis setex failed');
         }
 
         return true;
@@ -137,16 +129,19 @@ class BucketRedis implements BucketInterface
             ];
         }
 
-        //$cache_engine_params_arr = CacheConfig::getCacheEngineParamsArr();
-        $redis = new \Predis\Client($servers_arr, ['prefix' => $this->cache_key_prefix]);
+        $this->redis = new \Predis\Client(
+            $servers_arr,
+            [
+                'prefix' => $this->cache_key_prefix,
+                'exceptions' => true
+            ]
+        );
 
-        return $redis;
+        return $this->redis;
     }
 
     public function cacheKey($key)
     {
-        //return md5($key);
         return $key;
     }
-
 }
